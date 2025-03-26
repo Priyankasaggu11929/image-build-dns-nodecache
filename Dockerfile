@@ -1,37 +1,58 @@
-ARG BCI_IMAGE=registry.suse.com/bci/bci-busybox
-ARG GO_IMAGE=rancher/hardened-build-base:v1.23.6b1
+#!UseOBSRepositories
 
-# Image that provides cross compilation tooling.
-FROM --platform=$BUILDPLATFORM rancher/mirrored-tonistiigi-xx:1.5.0 as xx
+#!BuildTag: rancher/image-build-dns-nodecache:v1.25.0
+#!BuildTag: rancher/image-build-dns-nodecache:latest
+#!BuildName: image-build-dns-nodecache
+
+ARG BCI_IMAGE=registry.suse.com/bci/bci-busybox
+ARG GO_IMAGE=rancher/image-build-base:latest
+
 
 FROM ${BCI_IMAGE} as bci
 
-FROM --platform=$BUILDPLATFORM ${GO_IMAGE} as base
-COPY --from=xx / /
-RUN set -x && \
-    apk add file make git clang lld
+FROM ${GO_IMAGE} as base
 
-FROM base as builder
-ARG TARGETPLATFORM
-RUN set -x && \
-    xx-apk add musl-dev gcc  lld 
+RUN set -euo pipefail; \
+    zypper -n install --no-recommends \
+    # file \
+    gcc \
+    # git \
+    # clang7 \
+    # llvm7 \
+    # lld \
+    # glibc \
+    # glibc-devel-static \    
+    musl-gcc \
+    musl-libc-static \
+    make; \
+    zypper -n clean; \
+    rm -rf {/target,}/var/log/{alternatives.log,lastlog,tallylog,zypper.log,zypp/history,YaST2}
+
 ARG TAG=1.25.0
 ARG K3S_ROOT_VERSION=v0.14.1
-RUN export ARCH=$(xx-info arch) &&\
-    mkdir -p /opt/xtables/ &&\
-    wget https://github.com/rancher/k3s-root/releases/download/${K3S_ROOT_VERSION}/k3s-root-xtables-${ARCH}.tar -O /opt/xtables/k3s-root-xtables.tar
+
+ARG K3S_ROOT_VERSION=v0.14.1
+
+# ARG TARGETARCH=amd64
+RUN if [ "$(uname -m)" == "x86_64" ]; then export ARCH="amd64"; elif [ "$(uname -m)" == "aarch64" ]; then export ARCH="arm64"; fi \
+    mkdir -p /opt/xtables/
+
+#!RemoteAssetUrl: https://github.com/k3s-io/k3s-root/releases/download/v0.14.1/k3s-root-xtables-amd64.tar
+COPY k3s-root-xtables-amd64.tar /opt/xtables/k3s-root-xtables.tar
+
 RUN tar xvf /opt/xtables/k3s-root-xtables.tar -C /opt/xtables
 
 ARG SRC=github.com/kubernetes/dns
 ARG PKG=github.com/kubernetes/dns
-RUN git clone --depth=1 https://${SRC}.git $GOPATH/src/${PKG}
+ENV C_INCLUDE_PATH="/usr/x86_64-linux-musl/include/:/usr/include/"
+ENV CC="musl-gcc"
+
+COPY dns ${GOPATH}/src/${PKG}
+
 WORKDIR $GOPATH/src/${PKG}
-RUN git tag --list
-RUN git fetch --all --tags --prune
-RUN git checkout tags/${TAG} -b ${TAG}
-RUN xx-go --wrap &&\
-    GO_LDFLAGS="-linkmode=external -X ${PKG}/pkg/version.VERSION=${TAG}" \
-    go-build-static.sh -gcflags=-trimpath=${GOPATH}/src -o . ./...
+
+RUN GO_LDFLAGS="-linkmode=external -X ${PKG}/pkg/version.VERSION=${TAG}" \
+    go-build-static.sh -gcflags=-trimpath=${GOPATH}/src  -mod=vendor -buildvcs=false -o . ./...
 RUN go-assert-static.sh node-cache
 RUN if [ `xx-info arch` = "amd64" ]; then \
         go-assert-boring.sh node-cache; \
