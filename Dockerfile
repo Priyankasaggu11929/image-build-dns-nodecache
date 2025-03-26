@@ -31,7 +31,24 @@ RUN set -euo pipefail; \
 ARG TAG=1.25.0
 ARG K3S_ROOT_VERSION=v0.14.1
 
-ARG K3S_ROOT_VERSION=v0.14.1
+#!RemoteAssetUrl: https://github.com/k3s-io/k3s-root/releases/download/v0.14.1/k3s-root-xtables-amd64.tar
+COPY k3s-root-xtables-amd64.tar /opt/xtables/k3s-root-xtables-amd64.tar
+
+#!RemoteAssetUrl: https://github.com/k3s-io/k3s-root/releases/download/v0.14.1/k3s-root-xtables-arm64.tar
+COPY k3s-root-xtables-arm64.tar /opt/xtables/k3s-root-xtables-arm64.tar
+
+# Choose the correct tar based on architecture
+RUN mkdir -p /opt/xtables/ && \
+    if [ "$(uname -m)" == "x86_64" ]; then \
+        cp /opt/xtables/k3s-root-xtables-amd64.tar /opt/xtables/k3s-root-xtables.tar; \
+    elif [ "$(uname -m)" == "aarch64" ]; then \
+        cp /opt/xtables/k3s-root-xtables-arm64.tar /opt/xtables/k3s-root-xtables.tar; \
+    fi
+
+# Extract the correct tarball
+RUN tar xvf /opt/xtables/k3s-root-xtables.tar -C /opt/xtables
+
+
 
 # ARG TARGETARCH=amd64
 RUN if [ "$(uname -m)" == "x86_64" ]; then export ARCH="amd64"; elif [ "$(uname -m)" == "aarch64" ]; then export ARCH="arm64"; fi \
