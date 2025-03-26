@@ -10,7 +10,7 @@ ARG GO_IMAGE=rancher/image-build-base:latest
 
 FROM ${BCI_IMAGE} as bci
 
-FROM ${GO_IMAGE} as base
+FROM ${GO_IMAGE} as builder
 
 RUN set -euo pipefail; \
     zypper -n install --no-recommends \
