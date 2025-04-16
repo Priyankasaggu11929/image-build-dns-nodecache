@@ -34,13 +34,12 @@ RUN mkdir -p /opt/xtables/ && \
 
 ARG SRC=github.com/kubernetes/dns
 ARG PKG=github.com/kubernetes/dns
-
 COPY dns ${GOPATH}/src/${PKG}
 
 WORKDIR $GOPATH/src/${PKG}
 
 RUN GO_LDFLAGS="-linkmode=external -X ${PKG}/pkg/version.VERSION=${TAG}" \
-    go-build-static.sh -gcflags=-trimpath=${GOPATH}/src  -mod=vendor -buildvcs=false -o . ./...
+    go-build-static.sh -gcflags=-trimpath=${GOPATH}/src -o . ./...
 RUN go-assert-static.sh node-cache
 RUN if [ `xx-info arch` = "amd64" ]; then \
         go-assert-boring.sh node-cache; \
