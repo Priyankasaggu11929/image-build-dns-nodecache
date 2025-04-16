@@ -1,32 +1,19 @@
 #!UseOBSRepositories
 
-#!BuildTag: rancher/image-build-dns-nodecache:v1.25.0
-#!BuildTag: rancher/image-build-dns-nodecache:latest
-#!BuildName: image-build-dns-nodecache
+#!BuildTag: rancher/hardened-dns-node-cache:v1.25.0
+#!BuildTag: rancher/hardened-dns-node-cache:latest
+#!BuildName: hardened-dns-node-cache
+
+# INFO: image-build-base:latest provides the following:
+# - required packages (make, musl-gcc, musl-libc-static, etc)
+# - set CC, and C_INCLUDE_PATH evironment variables, to enable building with musl lib
 
 ARG BCI_IMAGE=registry.suse.com/bci/bci-busybox
 ARG GO_IMAGE=rancher/image-build-base:latest
 
-
 FROM ${BCI_IMAGE} as bci
 
 FROM ${GO_IMAGE} as builder
-
-RUN set -euo pipefail; \
-    zypper -n install --no-recommends \
-    # file \
-    gcc \
-    # git \
-    # clang7 \
-    # llvm7 \
-    # lld \
-    # glibc \
-    # glibc-devel-static \    
-    musl-gcc \
-    musl-libc-static \
-    make; \
-    zypper -n clean; \
-    rm -rf {/target,}/var/log/{alternatives.log,lastlog,tallylog,zypper.log,zypp/history,YaST2}
 
 ARG TAG=1.25.0
 ARG K3S_ROOT_VERSION=v0.14.1
@@ -47,8 +34,6 @@ RUN mkdir -p /opt/xtables/ && \
 
 ARG SRC=github.com/kubernetes/dns
 ARG PKG=github.com/kubernetes/dns
-ENV C_INCLUDE_PATH="/usr/x86_64-linux-musl/include/:/usr/include/"
-ENV CC="musl-gcc"
 
 COPY dns ${GOPATH}/src/${PKG}
 
