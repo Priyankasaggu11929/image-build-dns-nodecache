@@ -18,6 +18,10 @@ FROM ${GO_IMAGE} as builder
 ARG TAG=1.25.0
 ARG K3S_ROOT_VERSION=v0.14.1
 
+# TODO(psaggu): review the binaries sourced from k3s-root-* tarball
+# - at time of review, if new statically build equivalent binaries are available in BCI repo, switch to use them
+# - if not the case above, and final shipping container image is not scratch, test with switching to regular (non-static) equivalent binaries available from BCI repo
+
 #!RemoteAssetUrl: https://github.com/k3s-io/k3s-root/releases/download/v0.14.1/k3s-root-xtables-amd64.tar
 COPY k3s-root-xtables-amd64.tar /opt/xtables/k3s-root-xtables-amd64.tar
 
